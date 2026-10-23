@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Green Machine Lawn Care LLC | Kearney, Lexington, Johnson Lake</title>
+<meta name="description" content="Lawn mowing, yard cleanups, tree trimming, stump removal, mulch and rock around Kearney, Lexington, Johnson Lake and Sumner, Nebraska. Get an instant estimate online.">
+<meta property="og:title" content="Green Machine Lawn Care LLC">
+<meta property="og:description" content="Lawn care around Kearney, Lexington and Johnson Lake. See your price in about a minute.">
+<meta property="og:image" content="https://greenmachinelawncarellc.com/logo.png">
+<link rel="icon" href="logo.png">
+<!-- Green Machine Lawn Care LLC website, hosted on GitHub Pages.
+     Prices: the services cards below and PRICES / SIZES / BEDS in the script. Keep both in sync with the Pricing note in the vault.
+     Map photos: Esri (Jake's key, locked to this domain). Streets: USGS The National Map. Address search: OpenStreetMap Nominatim. -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root { --green: #2f7d3a; --green-dark: #23602c; --ink: #1b2a1e; --muted: #5b6b5d; --line: #d3ddcf; --soft: #eef4eb; --bg: #ffffff; --warn: #9a5b00; --bed: #e8892f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .gm { max-width: 640px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  h2 { margin: 0; font-size: 1.5rem; line-height: 1.2; }
+  h3 { margin: 0; font-size: 1.15rem; }
+  .sub { margin: 4px 0 0; color: var(--muted); }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tabs button { font: inherit; font-weight: 600; padding: 11px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); cursor: pointer; text-align: center; }
+  .tabs button[aria-pressed="true"] { background: var(--green); color: #fff; border-color: var(--green); }
+  .row { display: flex; gap: 8px; }
+  input[type=text], input[type=number] { flex: 1; min-width: 0; font: inherit; padding: 11px; border: 1px solid var(--line); border-radius: 8px; }
+  .btn { font: inherit; font-weight: 600; padding: 11px 14px; border: 0; border-radius: 8px; background: var(--green); color: #fff; cursor: pointer; }
+  .btn.ghost { background: #fff; color: var(--green); border: 1px solid var(--line); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn:focus-visible, .tabs button:focus-visible, input:focus-visible, .seg input:focus-visible + span, .sizes input:focus-visible + span { outline: 3px solid var(--green); outline-offset: 2px; }
+  #map { height: 360px; border-radius: 10px; border: 1px solid var(--line); }
+  .tools { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tools .btn { flex: 1 1 120px; padding: 9px 10px; font-size: .95rem; }
+  .hint { font-size: .9rem; color: var(--muted); margin: 0; }
+  .msg { font-size: .9rem; color: var(--warn); margin: 0; min-height: 1.2em; }
+  .msg.ok { color: var(--green-dark); }
+  .areas { font-size: .95rem; font-variant-numeric: tabular-nums; }
+  .lbl { font-size: .78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+  .seg label { position: relative; display: block; }
+  .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; }
+  .seg span { display: flex; align-items: center; justify-content: center; height: 100%; font: inherit; font-size: .95rem; font-weight: 600; padding: 11px 4px; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; text-align: center; }
+  .seg input:checked + span { background: var(--green); color: #fff; border-color: var(--green); }
+  .seg.target input[value=beds]:checked + span { background: var(--bed); border-color: var(--bed); }
+  .sizes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sizes label { position: relative; }
+  .sizes input { position: absolute; opacity: 0; inset: 0; margin: 0; }
+  .sizes span { display: block; height: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .sizes b { display: block; }
+  .sizes small { color: var(--muted); }
+  .sizes input:checked + span { border-color: var(--green); background: var(--soft); box-shadow: inset 0 0 0 1px var(--green); }
+  .check { display: flex; gap: 10px; align-items: center; }
+  .check input { width: 22px; height: 22px; accent-color: var(--green); flex-shrink: 0; }
+  .needs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .needs .check { border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-weight: 600; }
+  .block { display: flex; flex-direction: column; gap: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .result { background: var(--soft); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .part { display: flex; flex-direction: column; gap: 6px; }
+  .part + .part { border-top: 1px solid var(--line); padding-top: 10px; }
+  .ptitle { font-size: .78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .price { font-size: 2.2rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .price small { font-size: 1rem; font-weight: 600; color: var(--muted); margin-left: 6px; }
+  .lines { font-size: .95rem; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 2px; }
+  .lines div { display: flex; justify-content: space-between; gap: 12px; }
+  .book { display: flex; flex-direction: column; gap: 6px; }
+  .book a.btn { text-align: center; text-decoration: none; }
+  details { border-top: 1px solid var(--line); padding-top: 10px; }
+  summary { font-weight: 600; cursor: pointer; }
+  .plist { font-size: .95rem; margin: 8px 0 0; padding-left: 18px; }
+  [hidden] { display: none !important; }
+  .leaflet-container { font: inherit; }
+
+  :root { --lime: #8cc63f; --black: #0d0f0c; }
+  html { scroll-behavior: smooth; }
+  a { color: var(--green-dark); }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+  .top { background: var(--black); color: #fff; position: sticky; top: 0; z-index: 1000; }
+  .top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 8px; padding-bottom: 8px; }
+  .brand { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-weight: 800; line-height: 1.1; }
+  .brand img { width: 48px; height: 48px; }
+  .brand small { display: block; font-weight: 500; font-size: .8rem; color: #c9d3c4; }
+  .top .btn { background: var(--lime); color: var(--black); white-space: nowrap; text-decoration: none; }
+  .hero { background: var(--black); color: #fff; text-align: center; padding: 28px 0 40px; }
+  .hero img { width: 180px; height: 180px; }
+  .hero h1 { margin: 12px 0 8px; font-size: 2rem; line-height: 1.15; }
+  .hero p { margin: 0 auto; max-width: 520px; color: #dfe7da; font-size: 1.1rem; }
+  .hero .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
+  .hero .btn { text-decoration: none; padding: 13px 20px; font-size: 1.05rem; }
+  .hero .btn.lime { background: var(--lime); color: var(--black); }
+  .hero .btn.ghost { background: transparent; color: #fff; border: 1px solid #5d6a58; }
+  .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; margin-top: 18px; font-size: .95rem; color: var(--lime); font-weight: 600; }
+  .band { padding: 36px 0; }
+  .band.soft { background: var(--soft); }
+  .band h2 { margin-bottom: 6px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 18px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card h3 { margin-bottom: 4px; }
+  .card .cost { font-weight: 800; color: var(--green-dark); margin: 0 0 6px; }
+  .card p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .about { display: grid; gap: 18px; align-items: center; }
+  .about p { margin: 0 0 10px; }
+  .contact { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 18px; }
+  .contact a.card { text-decoration: none; color: var(--ink); }
+  .contact b { display: block; }
+  .contact .card { overflow-wrap: anywhere; }
+  footer { background: var(--black); color: #aab5a5; text-align: center; font-size: .9rem; padding: 20px 16px; }
+  #estimate { scroll-margin-top: 70px; }
+  @media (max-width: 420px) { .brand small { display: none; } .hero h1 { font-size: 1.7rem; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#"><img src="logo.png" alt=""><span>Green Machine<small>Lawn Care LLC</small></span></a>
+    <a class="btn" href="tel:+13082220252">Call (308) 222-0252</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <img src="logo.png" alt="Green Machine Lawn Care logo">
+    <h1>Lawn care you can count on</h1>
+    <p>Mowing, cleanups, tree trimming, mulch and rock around Kearney, Lexington, Johnson Lake and Sumner. Locally owned and done right.</p>
+    <div class="ctas">
+      <a class="btn lime" href="#estimate">See my price now</a>
+      <a class="btn ghost" href="sms:+13082220252">Text Jake</a>
+    </div>
+    <div class="badges"><span>Free estimates</span><span>No travel charge</span><span>Locally owned</span></div>
+  </div>
+</section>
+
+<main>
+<section class="band">
+<div class="gm" id="estimate">
+  <header>
+    <h2>Get an instant estimate</h2>
+    <p class="sub">Price your mowing, mulch, or rock in about a minute. No phone call needed.</p>
+  </header>
+
+  <section>
+    <div class="lbl">What do you need?</div>
+    <div class="needs">
+      <label class="check"><input type="checkbox" id="wantMow" checked> Mowing</label>
+      <label class="check"><input type="checkbox" id="wantBeds"> Mulch or rock</label>
+    </div>
+  </section>
+
+  <div class="tabs" role="group" aria-label="How to size your yard" id="tabs">
+    <button type="button" id="tabMap" aria-pressed="true">Trace it on a map</button>
+    <button type="button" id="tabSize" aria-pressed="false">Just pick a size</button>
+  </div>
+
+  <section id="mapPanel">
+    <div class="row">
+      <input type="text" id="addr" placeholder="Your address, like 123 Main St, Kearney NE" autocomplete="street-address" aria-label="Your address">
+      <button type="button" class="btn" id="find">Find</button>
+    </div>
+    <p class="msg" id="findMsg" role="status"></p>
+    <div id="targetBox" hidden>
+      <div class="lbl">What are you outlining?</div>
+      <div class="seg target" role="radiogroup">
+        <label><input type="radio" name="target" value="grass" checked><span>Grass</span></label>
+        <label><input type="radio" name="target" value="beds"><span>Flower beds</span></label>
+      </div>
+    </div>
+    <div id="map" aria-label="Map of your yard"></div>
+    <p class="hint" id="drawHint"></p>
+    <div class="tools">
+      <button type="button" class="btn ghost" id="undo">Undo last point</button>
+      <button type="button" class="btn ghost" id="addArea">Add another area</button>
+      <button type="button" class="btn ghost" id="clear">Start over</button>
+    </div>
+    <div class="areas" id="areas"></div>
+  </section>
+
+  <div class="block" id="mowBlock">
+    <h3>Mowing</h3>
+    <section id="sizePanel" hidden>
+      <div class="lbl">How big is your grass?</div>
+      <div class="sizes" role="radiogroup">
+        <label><input type="radio" name="size" value="small"><span><b>Small</b><small>Small in-town lot, under 3,500 sq ft of grass</small></span></label>
+        <label><input type="radio" name="size" value="medium" checked><span><b>Medium</b><small>Typical town lot, about 3,500 to 6,000 sq ft</small></span></label>
+        <label><input type="radio" name="size" value="large"><span><b>Large</b><small>Big lot or corner lot, about 6,000 to 10,000 sq ft</small></span></label>
+        <label><input type="radio" name="size" value="xl"><span><b>Extra large</b><small>Acreage or lake lot, over 10,000 sq ft</small></span></label>
+      </div>
+    </section>
+
+    <section>
+      <div class="lbl">How often?</div>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="freq" value="week" checked><span>Weekly</span></label>
+        <label><input type="radio" name="freq" value="2week"><span>Every 2 weeks</span></label>
+        <label><input type="radio" name="freq" value="once"><span>One time</span></label>
+      </div>
+    </section>
+
+    <section>
+      <div class="lbl">Edging along the driveway and sidewalks?</div>
+      <div class="sizes" role="radiogroup">
+        <label><input type="radio" name="edge" value="0" checked><span><b>No edging</b><small>Mow, trim, and blow only</small></span></label>
+        <label><input type="radio" name="edge" value="10"><span><b>Standard, $10</b><small>One driveway and a front walk. Up to about 100 feet of edges.</small></span></label>
+        <label><input type="radio" name="edge" value="20"><span><b>Large, $20</b><small>Corner lot, long driveway, or sidewalks on more than one side. About 100 to 200 feet.</small></span></label>
+        <label><input type="radio" name="edge" value="ask"><span><b>Custom</b><small>Over 200 feet of edges. Quoted during your free on-site visit.</small></span></label>
+      </div>
+    </section>
+
+    <label class="check"><input type="checkbox" id="over"> The grass is over 8 inches tall right now</label>
+  </div>
+
+  <div class="block" id="bedBlock" hidden>
+    <h3>Mulch or rock</h3>
+    <section>
+      <div class="lbl">Total bed size</div>
+      <div class="row"><input type="number" id="bedSqft" inputmode="numeric" min="0" step="10" placeholder="Square feet" aria-label="Total bed size in square feet"></div>
+      <p class="hint">Outline your beds on the map with "Flower beds" picked and this fills in for you, or type it in. A bed 4 feet deep and 25 feet long is 100 sq ft.</p>
+    </section>
+    <section>
+      <div class="lbl">Material</div>
+      <div class="sizes" role="radiogroup">
+        <label><input type="radio" name="mat" value="natural" checked><span><b>Natural mulch</b><small>$75 a cubic yard, installed</small></span></label>
+        <label><input type="radio" name="mat" value="brown"><span><b>Brown mulch</b><small>$95 a cubic yard, installed</small></span></label>
+        <label><input type="radio" name="mat" value="river"><span><b>River rock</b><small>$150 a cubic yard, installed</small></span></label>
+        <label><input type="radio" name="mat" value="decor"><span><b>Decorative rock</b><small>Colored or specialty stone. Custom quote.</small></span></label>
+      </div>
+    </section>
+    <section>
+      <div class="lbl">How deep?</div>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="depth" value="2"><span>2 inches</span></label>
+        <label><input type="radio" name="depth" value="3" checked><span>3 inches</span></label>
+        <label><input type="radio" name="depth" value="4"><span>4 inches</span></label>
+      </div>
+      <p class="hint">3 inches is standard for mulch. 2 to 3 inches is typical for rock.</p>
+    </section>
+  </div>
+
+  <section class="result" aria-live="polite">
+    <div class="part" id="mowPart">
+      <div class="ptitle">Mowing</div>
+      <div class="price" id="price">--</div>
+      <div class="lines" id="lines"></div>
+      <p class="hint">Mowing, trimming, and blowing are always included.</p>
+    </div>
+    <div class="part" id="bedPart" hidden>
+      <div class="ptitle">Mulch or rock, one time</div>
+      <div class="price" id="bedPrice">--</div>
+      <div class="lines" id="bedLines"></div>
+      <p class="hint">Mulch and rock prices are based on current local supplier prices and can change. Delivery, if needed, is billed at the supplier's cost.</p>
+    </div>
+    <p class="hint"><b>This is an estimate.</b> Your final price is confirmed during a free on-site visit.</p>
+  </section>
+
+  <section class="book">
+    <a class="btn" id="text" href="sms:+13082220252">Text Jake to get on the schedule</a>
+    <p class="hint">Or call or text (308) 222-0252. Estimates are always free, with no obligation.</p>
+  </section>
+
+</div>
+
+
+</section>
+
+<section class="band soft" id="services">
+  <div class="wrap">
+    <h2>Services and prices</h2>
+    <p class="sub">Straight prices, no surprises. Every job starts with a free estimate.</p>
+    <div class="cards">
+      <div class="card"><h3>Lawn mowing</h3><p class="cost">From $35 a mow</p><p>$10 per 1,000 sq ft of grass. Mowing, trimming, and blowing always included. Weekly or every 2 weeks. One-time cuts are $10 extra.</p></div>
+      <div class="card"><h3>Edging</h3><p class="cost">$10 or $20</p><p>Clean lines along your driveway and sidewalks. $10 for most yards, $20 for corner lots or long driveways.</p></div>
+      <div class="card"><h3>Yard and leaf cleanups</h3><p class="cost">$60 an hour</p><p>Leaves, sticks, and overgrown beds cleared out. $100 minimum.</p></div>
+      <div class="card"><h3>Tree trimming</h3><p class="cost">$60 an hour</p><p>Low branches and overgrown shrubs trimmed back and hauled off.</p></div>
+      <div class="card"><h3>Stump removal</h3><p class="cost">$100 to $200</p><p>$100 for stumps under 12 inches, $200 for 12 to 24 inches.</p></div>
+      <div class="card"><h3>Mulch installed</h3><p class="cost">$75 to $95 a cubic yard</p><p>$75 natural, $95 brown. $100 minimum.</p></div>
+      <div class="card"><h3>River rock installed</h3><p class="cost">$150 a cubic yard</p><p>$100 minimum. Decorative rock is quoted by the stone you pick.</p></div>
+      <div class="card"><h3>Bagging clippings</h3><p class="cost">$5 a bag</p><p>Want the clippings hauled off? Just ask.</p></div>
+    </div>
+    <p class="hint" style="margin-top:14px">Tall grass (over 8 inches) costs double on the first cut. Mulch and rock prices follow local supplier prices and can change.</p>
+  </div>
+</section>
+
+<section class="band" id="about">
+  <div class="wrap about">
+    <div>
+      <h2>Hi, I'm Jake</h2>
+      <p>I'm the owner of Green Machine Lawn Care LLC, a local guy from Sumner. I take pride in doing the job right and treating your yard like it's my own.</p>
+      <p>I work Kearney, Lexington, Johnson Lake, and the towns around them, with no travel charge. I schedule each town on its own day, so you get the same price no matter where you live.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band soft" id="contact">
+  <div class="wrap">
+    <h2>Get in touch</h2>
+    <p class="sub">Call or text any time. Estimates are always free.</p>
+    <div class="contact">
+      <a class="card" href="sms:+13082220252"><b>Text</b>(308) 222-0252</a>
+      <a class="card" href="tel:+13082220252"><b>Call</b>(308) 222-0252</a>
+      <a class="card" href="mailto:jacobrf@greenmachinelawncarellc.com"><b>Email</b>jacobrf@greenmachinelawncarellc.com</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>&copy; 2026 Green Machine Lawn Care LLC &middot; Sumner, Nebraska</footer>
+
+<script>
+// ---- Prices (keep in sync with the Pricing note and the Business App's pricing.js) ----
+const PRICES = { per1000: 10, minimum: 35, oneTimeExtra: 10 };
+// Pick-a-size buckets: [low sq ft, high sq ft] used to show a price range.
+const SIZES = { small: [0, 3500], medium: [3500, 6000], large: [6000, 10000], xl: [10000, null] };
+// Beds: price per cubic yard installed (null = custom quote), and the job minimum.
+const BEDS = { natural: { name: 'Natural mulch', perYard: 75 }, brown: { name: 'Brown mulch', perYard: 95 },
+  river: { name: 'River rock', perYard: 150 }, decor: { name: 'Decorative rock', perYard: null }, minimum: 100 };
+const PHONE = '+13082220252';
+
+const $ = (id) => document.getElementById(id);
+const money = (n) => '$' + Math.round(n);
+const pick = (name) => document.querySelector(`input[name=${name}]:checked`).value;
+function mowPrice(sqft) { return Math.max(PRICES.minimum, Math.ceil(sqft / 1000 * PRICES.per1000)); }
+function visitPrice(sqft, once, over) { const v = mowPrice(sqft) + (once ? PRICES.oneTimeExtra : 0); return { visit: v, first: over ? v * 2 : v }; }
+// Cubic yards for a bed: sq ft x depth in inches / 324, rounded up to the next half yard (how suppliers sell it).
+const bedYards = (sqft, inches) => sqft > 0 ? Math.max(0.5, Math.ceil(sqft * inches / 324 * 2) / 2) : 0;
+
+// ---- Map ----
+// USGS NAIP aerial photos, fetched per tile from the ImageServer (sharper than the cached USGS basemap).
+const NaipLayer = L.TileLayer.extend({
+  getTileUrl(c) {
+    const s = this.getTileSize(), nw = c.scaleBy(s), se = nw.add(s);
+    const crs = this._map.options.crs, z = c.z;
+    const a = crs.project(this._map.unproject(nw, z)), b = crs.project(this._map.unproject(se, z));
+    const bbox = [a.x, b.y, b.x, a.y].join(',');
+    return `https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${s.x},${s.y}&format=jpg&f=image`;
+  }
+});
+const map = L.map('map', { center: [40.70, -99.08], zoom: 10, maxZoom: 20, tap: true });
+map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
+const SEARCH_CREDIT = 'Search: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+const naip = new NaipLayer('', { maxZoom: 20, attribution: 'Photos and streets: USGS / USDA NAIP, The National Map · ' + SEARCH_CREDIT });
+
+// Sharper photos: Esri World Imagery through Jake's free ArcGIS Location Platform account.
+// The key is a public website key (it shows in the page either way), locked in Esri to greenmachinelawncarellc.com.
+// Leave it empty to use the USGS photos. If Esri tiles keep failing (outage, or no key: Esri answers with
+// an error instead of a picture), the map switches to USGS on its own. Note (tested 2026-10-23): Esri still
+// serves cached photos for a wrong key, so a typo in the key won't trigger the switch. Check usage in the Esri dashboard.
+const ESRI_KEY = 'AAPTaoIdsU7XRphTwC7PYyEhMdw..7kHC-HOMR6WrvY8u_utlglsAIFPzx3fyosjh064V914njvMX6mdnvXyLAUj7sxeZ-2MZ0QjlPRiheCEphI0AHZEPJ6RL5oMKSx8Sfx5XKNglOcrsMeaRI2gfR0xCc_XIK45TqX5uCZRkfTUJ-YdUSJjIdatR5X1xKUjR0YDIHe-DV0mI76Rif8PQPOjRV7lcoWPWcJWCwj768Y95SLZPmzwjhkTJ2NuE5to4CnEv9Njhliq31NVucQ..AT1_wn993oA9';
+if (ESRI_KEY) {
+  const esri = L.tileLayer(`https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=${ESRI_KEY}`,
+    { maxZoom: 20, maxNativeZoom: 19, attribution: 'Photos: Powered by <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>, Maxar, Earthstar Geographics · Streets: USGS The National Map · ' + SEARCH_CREDIT }).addTo(map);
+  let fails = 0;
+  esri.on('tileerror', () => { if (++fails === 4 && map.hasLayer(esri)) { map.removeLayer(esri); naip.addTo(map); naip.bringToBack(); } });
+} else naip.addTo(map);
+
+// Street names on top of the photo: USGS National Transportation Dataset, drawn as one image for the
+// whole view (one image, not tiles, so labels don't get cut in half at tile edges). Redrawn after each move.
+const streets = L.imageOverlay('data:image/gif;base64,R0lGODlhAQABAAAAACw=', map.getBounds(), { interactive: false, opacity: 0.95 }).addTo(map);
+function refreshStreets() {
+  const b = map.getBounds(), sz = map.getSize(), crs = map.options.crs;
+  const sw = crs.project(b.getSouthWest()), ne = crs.project(b.getNorthEast());
+  const url = `https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer/export?bbox=${sw.x},${sw.y},${ne.x},${ne.y}&bboxSR=3857&imageSR=3857&size=${sz.x},${sz.y}&format=png32&transparent=true&layers=show:13&f=image`;
+  const img = new Image();
+  img.onload = () => { streets.setUrl(url); streets.setBounds(b); };
+  img.src = url;
+}
+map.on('moveend', refreshStreets);
+
+// What the customer traces: grass areas (mowing) and flower beds (mulch/rock). Each area is a list of [lat, lng].
+const sets = { grass: [[]], beds: [[]] };
+const COLORS = { grass: { line: '#7CFC00', dot: '#2f7d3a' }, beds: { line: '#ffb347', dot: '#c96a14' } };
+let target = 'grass';
+const shapes = L.layerGroup().addTo(map);
+
+// Area on the earth's surface in square meters (spherical polygon formula).
+function areaM2(pts) {
+  if (pts.length < 3) return 0;
+  const R = 6378137, rad = Math.PI / 180; let s = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [la1, lo1] = pts[i], [la2, lo2] = pts[(i + 1) % pts.length];
+    s += (lo2 - lo1) * rad * (2 + Math.sin(la1 * rad) + Math.sin(la2 * rad));
+  }
+  return Math.abs(s * R * R / 2);
+}
+const sqft = (pts) => areaM2(pts) * 10.7639;
+const totalSqft = (set) => Math.round(sets[set].reduce((t, a) => t + sqft(a), 0));
+
+// Every corner is a draggable dot. Dragging reshapes the outline live; tapping a dot does nothing (no new point).
+const dot = (color, current) => L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 11],
+  html: `<div style="width:22px;height:22px;border-radius:50%;background:${current ? color.dot : color.line};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>` });
+function drawShapes() {
+  shapes.clearLayers();
+  for (const set of ['grass', 'beds']) {
+    const c = COLORS[set], list = sets[set];
+    list.forEach((pts, i) => {
+      const current = set === target && i === list.length - 1;
+      const outline = pts.length >= 3 ? L.polygon(pts, { color: c.line, weight: 3, fillOpacity: .25, interactive: false })
+        : pts.length === 2 ? L.polyline(pts, { color: c.line, weight: 3, interactive: false }) : null;
+      if (outline) outline.addTo(shapes);
+      pts.forEach((p, j) => {
+        const m = L.marker(p, { icon: dot(c, current), draggable: true, autoPan: true, keyboard: false }).addTo(shapes);
+        m.on('drag', (e) => { const ll = e.target.getLatLng(); pts[j] = [ll.lat, ll.lng]; if (outline) outline.setLatLngs(pts); updateAreas(); });
+        m.on('dragend', drawShapes);
+      });
+    });
+  }
+  updateAreas();
+}
+function updateAreas() {
+  const out = [];
+  for (const [set, label] of [['grass', 'Grass'], ['beds', 'Bed']]) {
+    const done = sets[set].filter(a => a.length >= 3);
+    done.forEach((a, i) => out.push(`${label} area ${i + 1}: ${Math.round(sqft(a)).toLocaleString('en-US')} sq ft`));
+    if (done.length > 1) out.push(`<b>${label === 'Bed' ? 'Beds' : 'Grass'} total: ${totalSqft(set).toLocaleString('en-US')} sq ft</b>`);
+  }
+  $('areas').innerHTML = out.join('<br>');
+  const beds = totalSqft('beds');
+  if (beds) $('bedSqft').value = beds;
+  const list = sets[target];
+  $('undo').disabled = !list.some(a => a.length);
+  $('addArea').disabled = list[list.length - 1].length < 3;
+  render();
+}
+refreshStreets();
+map.on('click', (e) => { const list = sets[target]; list[list.length - 1].push([e.latlng.lat, e.latlng.lng]); drawShapes(); });
+$('undo').addEventListener('click', () => {
+  const list = sets[target];
+  if (!list[list.length - 1].length && list.length > 1) list.pop();
+  list[list.length - 1].pop(); drawShapes();
+});
+$('addArea').addEventListener('click', () => { sets[target].push([]); drawShapes(); });
+$('clear').addEventListener('click', () => { sets[target] = [[]]; if (target === 'beds') $('bedSqft').value = ''; drawShapes(); });
+
+// Address search (OpenStreetMap). Only runs when the customer taps Find.
+async function findAddress() {
+  const q = $('addr').value.trim();
+  if (!q) { $('findMsg').textContent = 'Type your address first.'; return; }
+  $('findMsg').classList.remove('ok');
+  $('findMsg').textContent = 'Looking it up...'; $('find').disabled = true;
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=' + encodeURIComponent(q.includes('NE') || q.toLowerCase().includes('nebraska') ? q : q + ', Nebraska');
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const d = await r.json();
+    if (!d.length) { $('findMsg').textContent = "Couldn't find that address. Try adding the town, or drag the map to your house."; return; }
+    map.setView([+d[0].lat, +d[0].lon], 19);
+    $('findMsg').classList.add('ok');
+    $('findMsg').textContent = 'Found it. Zoom or drag if your house is a little off center, then tap to outline.';
+    render(); // puts the address in the booking text
+  } catch (e) {
+    $('findMsg').textContent = "Search isn't working right now. Drag and zoom the map to your house instead.";
+  } finally { $('find').disabled = false; }
+}
+$('find').addEventListener('click', findAddress);
+$('addr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); findAddress(); } });
+
+// ---- Layout: what's shown depends on what they need and how they size the yard ----
+let mode = 'map';
+function setMode(m) { mode = m; layout(); }
+function layout() {
+  const mow = $('wantMow').checked, beds = $('wantBeds').checked;
+  if (!mow) mode = 'map';                       // the size picker is only for grass
+  $('tabs').hidden = !mow;
+  $('tabMap').setAttribute('aria-pressed', mode === 'map'); $('tabSize').setAttribute('aria-pressed', mode === 'size');
+  $('mapPanel').hidden = mode !== 'map';
+  $('sizePanel').hidden = mode !== 'size';
+  $('mowBlock').hidden = !mow; $('mowPart').hidden = !mow;
+  $('bedBlock').hidden = !beds; $('bedPart').hidden = !beds;
+  $('targetBox').hidden = !(mow && beds);
+  if (!beds) target = 'grass';
+  if (!mow && beds) target = 'beds';
+  document.querySelector(`input[name=target][value=${target}]`).checked = true;
+  $('drawHint').textContent = target === 'grass'
+    ? 'Tap the corners of your grass to outline it. Drag any dot to move it. Leave out the house, driveway, and flower beds. Front and back yard can be separate areas.'
+    : 'Tap the corners of each flower bed to outline it. Drag any dot to move it. Use "Add another area" for each separate bed.';
+  if (mode === 'map') setTimeout(() => map.invalidateSize(), 50);
+  drawShapes();
+}
+$('tabMap').addEventListener('click', () => setMode('map'));
+$('tabSize').addEventListener('click', () => setMode('size'));
+$('wantMow').addEventListener('change', layout);
+$('wantBeds').addEventListener('change', layout);
+document.querySelectorAll('input[name=target]').forEach(el => el.addEventListener('change', () => { target = el.value; layout(); }));
+document.querySelectorAll('input').forEach(el => { if (!['addr', 'wantMow', 'wantBeds'].includes(el.id) && el.name !== 'target') el.addEventListener(el.type === 'number' ? 'input' : 'change', render); });
+
+// ---- Price ----
+function mowEstimate() {
+  const freq = pick('freq'), once = freq === 'once';
+  const edgeChoice = pick('edge'), edgeAsk = edgeChoice === 'ask'; // over 200 ft: no price online, quoted on site
+  const edge = edgeAsk ? 0 : Number(edgeChoice);
+  const over = $('over').checked, per = once ? 'one time' : 'per mow';
+  const how = freq === 'week' ? 'weekly' : freq === '2week' ? 'every 2 weeks' : 'one time';
+  const lines = [];
+  if (mode === 'map') {
+    const ft = totalSqft('grass');
+    if (!ft) return { price: '--', lines: [['Outline your grass on the map to see your price.', null]], text: '' };
+    const p = visitPrice(ft, once, over);
+    lines.push(['Mow, trim, and blow (' + ft.toLocaleString('en-US') + ' sq ft)', p.visit]);
+    if (over) lines.push(['Tall grass first mow (double)', p.visit]);
+    if (edge) lines.push(['Edging', edge]);
+    if (edgeAsk) lines.push(['Edging (over 200 ft)', 'quoted on site']);
+    if (over && !once) lines.push(['Every mow after that', p.visit + edge]);
+    return { price: `${money(p.first + edge)}<small>${over && !once ? 'first mow' : per}</small>`, lines,
+      text: `mowing about ${ft.toLocaleString('en-US')} sq ft of grass ${how}, estimate ${money(p.first + edge)}${over && !once ? ' first mow then ' + money(p.visit + edge) : ''}${edgeAsk ? ', plus edging over 200 feet' : ''}` };
+  }
+  const size = pick('size'), [lo, hi] = SIZES[size];
+  const a = visitPrice(lo, once, over), b = hi ? visitPrice(hi, once, over) : null;
+  const low = a.first + edge, high = b ? b.first + edge : null;
+  const range = high && high !== low ? `${money(low)} to ${money(high)}` : high ? money(low) : `${money(low)} and up`;
+  if (over) lines.push(['Tall grass first mow is double', null]);
+  if (over && !once) lines.push(['Every mow after that', b ? `${money(a.visit + edge)} to ${money(b.visit + edge)}` : `${money(a.visit + edge)} and up`]);
+  if (edge) lines.push(['Includes edging', edge]);
+  if (edgeAsk) lines.push(['Edging (over 200 ft)', 'quoted on site']);
+  lines.push(['Trace your yard on the map for an exact price', null]);
+  return { price: `${range}<small>${over && !once ? 'first mow' : per}</small>`, lines,
+    text: `mowing a ${size === 'xl' ? 'extra large' : size} yard ${how}, estimate ${range}${edgeAsk ? ', plus edging over 200 feet' : ''}` };
+}
+function bedEstimate() {
+  const ft = Math.max(0, Math.round(Number($('bedSqft').value) || 0));
+  const m = BEDS[pick('mat')], inches = Number(pick('depth'));
+  if (!ft) return { price: '--', lines: [['Outline your beds on the map or type the size to see your price.', null]], text: '' };
+  const yards = bedYards(ft, inches);
+  const yd = `${yards} cubic yard${yards === 1 ? '' : 's'}`;
+  const lines = [[`${m.name}, ${ft.toLocaleString('en-US')} sq ft at ${inches} inches deep`, null], [`About ${yd} needed`, null]];
+  if (m.perYard == null) {
+    lines.push(['Price depends on the stone you choose', null]);
+    return { price: 'Custom quote', lines, text: `${m.name.toLowerCase()} for about ${ft.toLocaleString('en-US')} sq ft of beds (${yd})` };
+  }
+  const raw = yards * m.perYard, total = Math.max(BEDS.minimum, raw);
+  lines.push([`${yd} at ${money(m.perYard)} installed`, raw]);
+  if (total > raw) lines.push([`Job minimum`, BEDS.minimum]);
+  return { price: `${money(total)}<small>one time</small>`, lines,
+    text: `${m.name.toLowerCase()} for about ${ft.toLocaleString('en-US')} sq ft of beds at ${inches} inches (${yd}), estimate ${money(total)}` };
+}
+const drawLines = (el, lines) => { el.innerHTML = lines.map(([l, v]) => `<div><span>${l}</span><span>${v == null ? '' : typeof v === 'number' ? money(v) : v}</span></div>`).join(''); };
+function render() {
+  const parts = [];
+  if ($('wantMow').checked) { const e = mowEstimate(); $('price').innerHTML = e.price; drawLines($('lines'), e.lines); if (e.text) parts.push(e.text); }
+  if ($('wantBeds').checked) { const e = bedEstimate(); $('bedPrice').innerHTML = e.price; drawLines($('bedLines'), e.lines); if (e.text) parts.push(e.text); }
+  const addr = $('addr').value.trim();
+  const body = parts.length ? `Hi Jake, I'd like to get on the schedule. ${addr ? addr + ', ' : ''}${parts.join('; and ')}.` : "Hi Jake, I'd like an estimate.";
+  $('text').href = `sms:${PHONE}?&body=${encodeURIComponent(body)}`;
+}
+
+layout();
+</script>
+</body>
+</html>
