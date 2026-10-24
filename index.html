@@ -106,8 +106,22 @@
   .contact a.card { text-decoration: none; color: var(--ink); }
   .contact b { display: block; }
   .contact .card { overflow-wrap: anywhere; }
+  .contact .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .contact .pair .btn { text-align: center; text-decoration: none; }
+  .contact .pair .btn.ghost { color: var(--green); }
+  .book a.btn.ghost { color: var(--green); }
   footer { background: var(--black); color: #aab5a5; text-align: center; font-size: .9rem; padding: 20px 16px; }
-  #estimate { scroll-margin-top: 70px; }
+  #estimate, #request { scroll-margin-top: 70px; }
+  .req { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .req label.f { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+  .req label.f small { font-weight: 400; color: var(--muted); }
+  .req input[type=text], .req input[type=tel], .req input[type=email], .req textarea { width: 100%; font: inherit; font-weight: 400; padding: 11px; border: 1px solid var(--line); border-radius: 8px; }
+  .req textarea { min-height: 96px; resize: vertical; }
+  .req input:focus-visible, .req textarea:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+  .req .est { background: var(--soft); border-radius: 8px; padding: 10px; font-size: .95rem; white-space: pre-line; }
+  .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .thanks { background: var(--soft); border-radius: 12px; padding: 16px; }
+  .thanks h3 { margin-bottom: 4px; }
   @media (max-width: 420px) { .brand small { display: none; } .hero h1 { font-size: 1.7rem; } }
 </style>
 </head>
@@ -254,8 +268,9 @@
   </section>
 
   <section class="book">
-    <a class="btn" id="text" href="sms:+13082220252">Text Jake to get on the schedule</a>
-    <p class="hint">Or call or text (308) 222-0252. Estimates are always free, with no obligation.</p>
+    <a class="btn" href="#request">Send this estimate to Jake</a>
+    <a class="btn ghost" id="text" href="sms:+13082220252">Or text Jake instead</a>
+    <p class="hint">Or call (308) 222-0252. Estimates are always free, with no obligation.</p>
   </section>
 
 </div>
@@ -281,7 +296,31 @@
   </div>
 </section>
 
-<section class="band" id="about">
+<section class="band" id="request">
+  <div class="gm">
+    <form class="req" id="reqForm" novalidate>
+      <header>
+        <h2>Request an estimate / Comment</h2>
+        <p class="sub">Send Jake a request, a question, or a comment, and he'll get back to you, usually the same day.</p>
+      </header>
+      <label class="f">Your name<input type="text" id="rqName" name="name" autocomplete="name" maxlength="80" required></label>
+      <label class="f">Phone number<input type="tel" id="rqPhone" name="phone" autocomplete="tel" inputmode="tel" maxlength="30" placeholder="(308) 555-1234" required></label>
+      <label class="f">Email <small>(optional)</small><input type="email" id="rqEmail" name="email" autocomplete="email" maxlength="120"></label>
+      <label class="f">Message <small>(optional, what do you need done? Your address helps.)</small><textarea id="rqMsg" name="message" maxlength="500"></textarea></label>
+      <label class="check" id="rqEstBox" hidden><input type="checkbox" id="rqEst" checked> Include my estimate from above</label>
+      <div class="est" id="rqEstText" hidden></div>
+      <div class="trap" aria-hidden="true"><label>Leave this empty<input type="text" name="website" id="rqTrap" tabindex="-1" autocomplete="off"></label></div>
+      <p class="msg" id="rqMsgOut" role="status"></p>
+      <button type="submit" class="btn" id="rqSend">Send request</button>
+    </form>
+    <div class="thanks" id="rqThanks" hidden>
+      <h3>Got it, thanks!</h3>
+      <p class="sub">Jake will reach out soon. If it's urgent, call or text (308) 222-0252.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band soft" id="about">
   <div class="wrap about">
     <div>
       <h2>Hi, I'm Jake</h2>
@@ -291,14 +330,13 @@
   </div>
 </section>
 
-<section class="band soft" id="contact">
+<section class="band" id="contact">
   <div class="wrap">
     <h2>Get in touch</h2>
     <p class="sub">Call or text any time. Estimates are always free.</p>
     <div class="contact">
-      <a class="card" href="sms:+13082220252"><b>Text</b>(308) 222-0252</a>
-      <a class="card" href="tel:+13082220252"><b>Call</b>(308) 222-0252</a>
-      <a class="card" href="mailto:jacobrf@greenmachinelawncarellc.com"><b>Email</b>jacobrf@greenmachinelawncarellc.com</a>
+      <a class="card" href="#request"><b>Request an estimate / Comment</b>Fill out a short form and Jake gets back to you</a>
+      <div class="card"><b>Call or text</b>(308) 222-0252<div class="pair"><a class="btn" href="tel:+13082220252">Call</a><a class="btn ghost" href="sms:+13082220252">Text</a></div></div>
     </div>
   </div>
 </section>
@@ -490,16 +528,23 @@ function mowEstimate() {
   const over = $('over').checked, per = once ? 'one time' : 'per mow';
   const how = freq === 'week' ? 'weekly' : freq === '2week' ? 'every 2 weeks' : 'one time';
   const lines = [];
+  // Every choice spelled out, one per line, for the request form (so Jake sees exactly what they picked).
+  const EDGE_LABEL = { '0': 'None', '10': 'Standard, $10', '20': 'Large, $20', 'ask': 'Custom, over 200 feet (quoted on site)' };
+  const choices = (sizeLine, priceLine) => [sizeLine, `How often: ${how[0].toUpperCase() + how.slice(1)}`, `Edging: ${EDGE_LABEL[edgeChoice]}`,
+    `Grass over 8 inches: ${over ? 'Yes (first mow is double)' : 'No'}`, `Mowing price: ${priceLine}`];
   if (mode === 'map') {
     const ft = totalSqft('grass');
-    if (!ft) return { price: '--', lines: [['Outline your grass on the map to see your price.', null]], text: '' };
+    if (!ft) return { price: '--', lines: [['Outline your grass on the map to see your price.', null]], text: '', detail: [] };
     const p = visitPrice(ft, once, over);
+    const areas = sets.grass.filter(a => a.length >= 3).length;
+    const detail = choices(`Mowing: about ${ft.toLocaleString('en-US')} sq ft of grass (traced on the map${areas > 1 ? `, ${areas} areas` : ''})`,
+      over && !once ? `${money(p.first + edge)} first mow, then ${money(p.visit + edge)} per mow` : `${money(p.first + edge)} ${per}`);
     lines.push(['Mow, trim, and blow (' + ft.toLocaleString('en-US') + ' sq ft)', p.visit]);
     if (over) lines.push(['Tall grass first mow (double)', p.visit]);
     if (edge) lines.push(['Edging', edge]);
     if (edgeAsk) lines.push(['Edging (over 200 ft)', 'quoted on site']);
     if (over && !once) lines.push(['Every mow after that', p.visit + edge]);
-    return { price: `${money(p.first + edge)}<small>${over && !once ? 'first mow' : per}</small>`, lines,
+    return { price: `${money(p.first + edge)}<small>${over && !once ? 'first mow' : per}</small>`, lines, detail,
       text: `mowing about ${ft.toLocaleString('en-US')} sq ft of grass ${how}, estimate ${money(p.first + edge)}${over && !once ? ' first mow then ' + money(p.visit + edge) : ''}${edgeAsk ? ', plus edging over 200 feet' : ''}` };
   }
   const size = pick('size'), [lo, hi] = SIZES[size];
@@ -511,35 +556,73 @@ function mowEstimate() {
   if (edge) lines.push(['Includes edging', edge]);
   if (edgeAsk) lines.push(['Edging (over 200 ft)', 'quoted on site']);
   lines.push(['Trace your yard on the map for an exact price', null]);
-  return { price: `${range}<small>${over && !once ? 'first mow' : per}</small>`, lines,
+  const SIZE_LABEL = { small: 'Small yard, under 3,500 sq ft', medium: 'Medium yard, about 3,500 to 6,000 sq ft', large: 'Large yard, about 6,000 to 10,000 sq ft', xl: 'Extra large yard, over 10,000 sq ft' };
+  const visitRange = b ? (b.visit === a.visit ? money(a.visit + edge) : `${money(a.visit + edge)} to ${money(b.visit + edge)}`) : `${money(a.visit + edge)} and up`;
+  const detail = choices(`Mowing: ${SIZE_LABEL[size]} (picked a size, not traced)`,
+    over && !once ? `${range} first mow, then ${visitRange} per mow` : `${range} ${per}`);
+  return { price: `${range}<small>${over && !once ? 'first mow' : per}</small>`, lines, detail,
     text: `mowing a ${size === 'xl' ? 'extra large' : size} yard ${how}, estimate ${range}${edgeAsk ? ', plus edging over 200 feet' : ''}` };
 }
 function bedEstimate() {
   const ft = Math.max(0, Math.round(Number($('bedSqft').value) || 0));
   const m = BEDS[pick('mat')], inches = Number(pick('depth'));
-  if (!ft) return { price: '--', lines: [['Outline your beds on the map or type the size to see your price.', null]], text: '' };
+  if (!ft) return { price: '--', lines: [['Outline your beds on the map or type the size to see your price.', null]], text: '', detail: [] };
   const yards = bedYards(ft, inches);
   const yd = `${yards} cubic yard${yards === 1 ? '' : 's'}`;
   const lines = [[`${m.name}, ${ft.toLocaleString('en-US')} sq ft at ${inches} inches deep`, null], [`About ${yd} needed`, null]];
+  const detail = [`Mulch or rock: ${m.name}`, `Bed size: ${ft.toLocaleString('en-US')} sq ft at ${inches} inches deep (about ${yd})`];
   if (m.perYard == null) {
     lines.push(['Price depends on the stone you choose', null]);
-    return { price: 'Custom quote', lines, text: `${m.name.toLowerCase()} for about ${ft.toLocaleString('en-US')} sq ft of beds (${yd})` };
+    detail.push('Mulch or rock price: Custom quote');
+    return { price: 'Custom quote', lines, detail, text: `${m.name.toLowerCase()} for about ${ft.toLocaleString('en-US')} sq ft of beds (${yd})` };
   }
   const raw = yards * m.perYard, total = Math.max(BEDS.minimum, raw);
   lines.push([`${yd} at ${money(m.perYard)} installed`, raw]);
   if (total > raw) lines.push([`Job minimum`, BEDS.minimum]);
-  return { price: `${money(total)}<small>one time</small>`, lines,
+  detail.push(`Mulch or rock price: ${money(total)} one time${total > raw ? ' (job minimum)' : ''}`);
+  return { price: `${money(total)}<small>one time</small>`, lines, detail,
     text: `${m.name.toLowerCase()} for about ${ft.toLocaleString('en-US')} sq ft of beds at ${inches} inches (${yd}), estimate ${money(total)}` };
 }
 const drawLines = (el, lines) => { el.innerHTML = lines.map(([l, v]) => `<div><span>${l}</span><span>${v == null ? '' : typeof v === 'number' ? money(v) : v}</span></div>`).join(''); };
 function render() {
-  const parts = [];
-  if ($('wantMow').checked) { const e = mowEstimate(); $('price').innerHTML = e.price; drawLines($('lines'), e.lines); if (e.text) parts.push(e.text); }
-  if ($('wantBeds').checked) { const e = bedEstimate(); $('bedPrice').innerHTML = e.price; drawLines($('bedLines'), e.lines); if (e.text) parts.push(e.text); }
+  const parts = [], detail = [];
+  if ($('wantMow').checked) { const e = mowEstimate(); $('price').innerHTML = e.price; drawLines($('lines'), e.lines); if (e.text) parts.push(e.text); detail.push(...e.detail); }
+  if ($('wantBeds').checked) { const e = bedEstimate(); $('bedPrice').innerHTML = e.price; drawLines($('bedLines'), e.lines); if (e.text) parts.push(e.text); detail.push(...e.detail); }
   const addr = $('addr').value.trim();
   const body = parts.length ? `Hi Jake, I'd like to get on the schedule. ${addr ? addr + ', ' : ''}${parts.join('; and ')}.` : "Hi Jake, I'd like an estimate.";
   $('text').href = `sms:${PHONE}?&body=${encodeURIComponent(body)}`;
+  // The request form carries the same estimate, if they made one.
+  estimateText = detail.length ? (addr ? `Address: ${addr}\n` : '') + detail.join('\n') : '';
+  $('rqEstBox').hidden = !estimateText;
+  $('rqEstText').hidden = !estimateText || !$('rqEst').checked;
+  $('rqEstText').textContent = estimateText;
 }
+
+// ---- Request form: goes to Jake's own server (n8n), which pings his phone. ----
+// Only /webhook/ is public there. If the server can't be reached, the customer is told to call or text instead.
+const REQUEST_URL = 'https://n8n.tailbf7ccc.ts.net/webhook/estimate-request';
+const formOpened = Date.now();
+let estimateText = '';
+$('rqEst').addEventListener('change', render);
+$('reqForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const out = $('rqMsgOut'); out.classList.remove('ok');
+  const name = $('rqName').value.trim(), phone = $('rqPhone').value.trim(), email = $('rqEmail').value.trim();
+  if (!name) { out.textContent = 'Please add your name.'; $('rqName').focus(); return; }
+  if (phone.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '').length !== 10) { out.textContent = 'Please add a 10-digit phone number.'; $('rqPhone').focus(); return; }
+  if (email && !$('rqEmail').checkValidity()) { out.textContent = "That email doesn't look right."; $('rqEmail').focus(); return; }
+  const data = new URLSearchParams({ name, phone, email, message: $('rqMsg').value.trim(),
+    estimate: $('rqEst').checked ? estimateText : '', website: $('rqTrap').value, t: String(Date.now() - formOpened) });
+  $('rqSend').disabled = true; out.textContent = 'Sending...';
+  try {
+    const r = await fetch(REQUEST_URL, { method: 'POST', body: data });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { $('reqForm').hidden = true; $('rqThanks').hidden = false; return; }
+    out.textContent = d.error || "That didn't go through. Please call or text Jake at (308) 222-0252.";
+  } catch (err) {
+    out.textContent = "That didn't go through. Please call or text Jake at (308) 222-0252.";
+  } finally { $('rqSend').disabled = false; }
+});
 
 layout();
 </script>
